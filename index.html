@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>바운더리엑스 AI 사물인식</title>
+  <title>바운더리엑스 AprilTag 인식 (모바일 최적화)</title>
   
   <link rel="icon" href="https://raw.githubusercontent.com/boundary-x/ai_teachable_machine/refs/heads/main/Favicon.png"/> 
   
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+  <!-- AprilTag WASM 경량 라이브러리 -->
+  <script src="https://cdn.jsdelivr.net/npm/@arenaxr/apriltag-js-standalone@latest/dist/apriltag.min.js"></script>
   
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
   <link rel="stylesheet" type="text/css" href="style.css">
@@ -19,21 +20,24 @@
       <a href="https://boundaryx.io">
         <img src="https://raw.githubusercontent.com/boundary-x/ai_voice_recognition/refs/heads/main/boundaryx_logo.png" alt="Logo">
       </a>
-      AI 사물인식
+      AprilTag 인식
     </div>
     <a href="https://boundaryx.io/59" class="back-button">돌아가기</a>
   </header>
 
   <main>
-    <div id="p5-container" class="canvas-container"></div>
+    <!-- [모바일 최적화] 캔버스와 비디오를 겹쳐서 배치 -->
+    <div id="video-container" class="canvas-container" style="position: relative; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center;">
+      <video id="webcam" autoplay playsinline muted style="position: absolute; width: 100%; height: 100%; object-fit: contain;"></video>
+      <canvas id="overlayCanvas" style="position: absolute; width: 100%; height: 100%; object-fit: contain; pointer-events: none;"></canvas>
+    </div>
     
     <section class="controls">
-      
       <div class="control-group">
         <h3>🖥️ 전송 데이터 확인</h3>
         <div class="data-info-box">
           <p class="info-title">📢 <strong>전송 데이터 안내</strong></p>
-          <p class="info-desc">인식된 사물 중 <strong>인식률(정확도)이 가장 높은 사물 1개</strong>의 기준 데이터가 전송됩니다.</p>
+          <p class="info-desc">인식된 AprilTag 중 <strong>선택한 ID의 태그 1개</strong>의 기준 데이터가 전송됩니다.</p>
           <div class="info-tags">
             <span><strong>x, y</strong> : 중심 좌표</span>
             <span><strong>w</strong> : 너비</span>
@@ -46,31 +50,25 @@
 
       <div class="control-group">
         <h3>1. 카메라 설정</h3>
-        <p>카메라 버튼을 통해 화면을 설정해주세요.</p>
         <div id="camera-control-buttons" class="button-group"></div>
       </div>
 
       <div class="control-group">
         <h3>2. 기기 연결</h3>
-        <p>블루투스 연결 버튼을 클릭해 마이크로비트를 연결해주세요.</p>
         <div id="bluetoothStatus">상태: 연결 대기 중</div>
         <div id="bluetooth-control-buttons" class="button-group" style="margin-top: 1.5rem;"></div>
       </div>
 
       <div class="control-group">
         <h3>3. 인식 설정</h3>
-        <p>인식할 사물을 추가하고 정확도를 설정해주세요.</p>
         <div id="object-select-container" class="model-selection"></div>
         <div id="selected-objects-list" class="selected-tags"></div>
-        <div id="confidence-container" class="model-key" style="margin-top: 20px;"></div>
       </div>
 
       <div class="control-group">
         <h3>4. 사물 인식 제어</h3>
-        <p>시작 버튼을 눌러 AI 인식을 시작하세요.</p>
         <div id="object-control-buttons" class="button-group"></div>
       </div>
-
     </section>
   </main>
 
@@ -115,6 +113,7 @@
     </div>
   </footer>
 
-  <script type="module" src="sketch.js"></script>
+  <!-- Vanilla JS 로직 연결 -->
+  <script src="app.js"></script>
 </body>
 </html>
