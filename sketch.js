@@ -1,4 +1,10 @@
+/*
+ * app.js
+ * Mobile Optimized AprilTag Detection (Vanilla JS & ES Module)
+ */
 
+// 1. ES 모듈 방식을 통해 AprilTag 라이브러리를 안전하게 임포트
+import * as AprilTagLib from 'https://esm.sh/@arenaxr/apriltag-js-standalone@1.0.2';
 
 // --- Bluetooth UUIDs ---
 const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
@@ -17,7 +23,7 @@ const SEND_INTERVAL = 100;
 
 let selectedObjects = []; 
 let isObjectDetectionActive = false; 
-let facingMode = "environment"; 
+let facingMode = "environment"; // 모바일 환경 기준 후방 카메라 우선
 let isFlipped = false;    
 
 // DOM Elements
@@ -40,14 +46,29 @@ async function init() {
   createUI();
   
   try {
-    // [수정됨] 라이브러리 공식 문서에 따른 정확한 콜백 초기화 방식
-    detector = window.Apriltag(() => {
-      isModelLoaded = true;
-      document.getElementById('btnStart').innerText = "태그 인식 시작";
-      console.log("AprilTag Model Loaded!");
-    });
+    // 모듈이 어떤 형태로 Export 되더라도 안전하게 클래스를 찾는 방어적 로직
+    const BaseModule = AprilTagLib.default || AprilTagLib.AprilTag || AprilTagLib;
+    
+    if (typeof BaseModule === 'function') {
+        const instance = BaseModule();
+        if (instance instanceof Promise) {
+            const Module = await instance; 
+            detector = new Module.Detector();
+        } else {
+            detector = new BaseModule.Detector();
+        }
+    } else if (BaseModule.Detector) {
+        detector = new BaseModule.Detector();
+    } else {
+        throw new Error("라이브러리 내부에서 Detector 모듈을 찾을 수 없습니다.");
+    }
+    
+    isModelLoaded = true;
+    document.getElementById('btnStart').innerText = "태그 인식 시작";
+    console.log("AprilTag Model Loaded successfully!");
   } catch (err) {
-    console.error("Failed to load AprilTag:", err);
+    console.error("AprilTag Load Error:", err);
+    alert("모델 로드 에러: " + err.message + "\n인터넷 연결 상태를 확인해주세요.");
   }
 
   await setupCamera();
@@ -90,7 +111,7 @@ function switchCamera() {
   setupCamera();
 }
 
-// --- Detection Loop (Mobile Optimized) ---
+// --- Detection Loop ---
 function detectLoop() {
   if (!isObjectDetectionActive || !isModelLoaded || videoWidth === 0) return;
 
@@ -98,11 +119,12 @@ function detectLoop() {
   const imgData = ctx.getImageData(0, 0, videoWidth, videoHeight);
   const data = imgData.data;
 
-  // Grayscale 변환
+  // Grayscale 단일 채널 변환
   for (let i = 0, j = 0; i < data.length; i += 4, j++) {
     grayBuffer[j] = (data[i] * 77 + data[i + 1] * 150 + data[i + 2] * 29) >> 8;
   }
 
+  // 디코딩
   const detections = detector.detect(grayBuffer, videoWidth, videoHeight);
   ctx.clearRect(0, 0, videoWidth, videoHeight);
 
@@ -110,11 +132,10 @@ function detectLoop() {
   let maxArea = 0;
   let detectedCount = 0; 
 
-  // [수정됨] 화면에서 가장 넓은 면적(Area)을 차지하는 태그를 대장(Target)으로 선정
+  // 인식된 태그 중 화면에서 가장 넓은 면적을 차지하는 대장(Target) 찾기
   detections.forEach(tag => {
     if (selectedObjects.includes(tag.id.toString())) {
       detectedCount++;
-      
       const corners = tag.corners;
       const minX = Math.min(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
       const maxX = Math.max(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
@@ -122,7 +143,6 @@ function detectLoop() {
       const maxY = Math.max(corners[0].y, corners[1].y, corners[2].y, corners[3].y);
       
       const area = (maxX - minX) * (maxY - minY);
-      
       if (!largestTag || area > maxArea) {
         largestTag = tag;
         maxArea = area;
@@ -130,12 +150,11 @@ function detectLoop() {
     }
   });
 
-  // 박스 렌더링
+  // 캔버스에 바운딩 박스 그리기
   detections.forEach(tag => {
     if (!selectedObjects.includes(tag.id.toString())) return;
 
     const [p0, p1, p2, p3] = tag.corners;
-    
     ctx.beginPath();
     ctx.moveTo(p0.x, p0.y);
     ctx.lineTo(p1.x, p1.y);
@@ -144,7 +163,7 @@ function detectLoop() {
     ctx.closePath();
 
     if (tag === largestTag) {
-      ctx.strokeStyle = '#0064FF';
+      ctx.strokeStyle = '#0064FF'; // 메인 타겟: 파란색
       ctx.lineWidth = 4;
       ctx.stroke();
       
@@ -156,7 +175,7 @@ function detectLoop() {
       ctx.textBaseline = 'middle';
       ctx.fillText(`ID: ${tag.id}`, tag.center.x, tag.center.y - 2);
     } else {
-      ctx.strokeStyle = '#00FF00';
+      ctx.strokeStyle = '#00FF00'; // 서브 타겟: 초록색
       ctx.lineWidth = 2;
       ctx.stroke();
       
@@ -167,7 +186,7 @@ function detectLoop() {
     }
   });
 
-  // 블루투스 데이터 전송
+  // 마이크로비트로 블루투스 데이터 전송
   let currentTime = performance.now();
   if (currentTime - lastSentTime > SEND_INTERVAL) {
     if (largestTag) {
@@ -195,7 +214,7 @@ function detectLoop() {
     lastSentTime = currentTime;
   }
 
-  // 모바일 성능 핵심 최적화
+  // 모바일 발열/부하 제어: 새 프레임이 준비된 순간에만 다시 실행
   if (isObjectDetectionActive) {
     if ('requestVideoFrameCallback' in video) {
       video.requestVideoFrameCallback(detectLoop);
@@ -342,4 +361,5 @@ async function sendBluetoothData(x, y, width, height, detectedCount) {
   }
 }
 
+// 앱 실행
 window.addEventListener('DOMContentLoaded', init);
