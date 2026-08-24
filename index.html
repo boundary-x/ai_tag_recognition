@@ -3,14 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>바운더리엑스 ArUco 마커 인식</title>
-  
-  <link rel="icon" href="https://raw.githubusercontent.com/boundary-x/ai_teachable_machine/refs/heads/main/Favicon.png"/> 
-  
-  <!-- [핵심] 에러 없는 순수 JS 기반 ArUco 라이브러리 로드 -->
-  <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco/src/cv.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco/src/aruco.js"></script>
-  
+  <title>바운더리엑스 AI AprilTag 인식</title>
+
+  <link rel="icon" href="https://raw.githubusercontent.com/boundary-x/ai_teachable_machine/refs/heads/main/Favicon.png"/>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
   <link rel="stylesheet" type="text/css" href="style.css">
 </head>
@@ -21,23 +19,21 @@
       <a href="https://boundaryx.io">
         <img src="https://raw.githubusercontent.com/boundary-x/ai_voice_recognition/refs/heads/main/boundaryx_logo.png" alt="Logo">
       </a>
-      ArUco 마커 인식
+      AI AprilTag 인식
     </div>
     <a href="https://boundaryx.io/59" class="back-button">돌아가기</a>
   </header>
 
   <main>
-    <div id="video-container" class="canvas-container" style="position: relative; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center;">
-      <video id="webcam" autoplay playsinline muted style="position: absolute; width: 100%; height: 100%; object-fit: contain;"></video>
-      <canvas id="overlayCanvas" style="position: absolute; width: 100%; height: 100%; object-fit: contain; pointer-events: none;"></canvas>
-    </div>
-    
+    <div id="p5-container" class="canvas-container"></div>
+
     <section class="controls">
+
       <div class="control-group">
         <h3>🖥️ 전송 데이터 확인</h3>
         <div class="data-info-box">
           <p class="info-title">📢 <strong>전송 데이터 안내</strong></p>
-          <p class="info-desc">인식된 마커 중 <strong>화면에서 가장 크게 보이는 마커 1개</strong>의 기준 데이터가 전송됩니다.</p>
+          <p class="info-desc">인식된 태그 중 <strong>화면에 가장 크게(가깝게) 잡힌 태그 1개</strong>의 기준 데이터가 전송됩니다.</p>
           <div class="info-tags">
             <span><strong>x, y</strong> : 중심 좌표</span>
             <span><strong>w</strong> : 너비</span>
@@ -50,25 +46,32 @@
 
       <div class="control-group">
         <h3>1. 카메라 설정</h3>
+        <p>카메라 버튼을 통해 화면을 설정해주세요.</p>
         <div id="camera-control-buttons" class="button-group"></div>
       </div>
 
       <div class="control-group">
         <h3>2. 기기 연결</h3>
+        <p>블루투스 연결 버튼을 클릭해 마이크로비트를 연결해주세요.</p>
         <div id="bluetoothStatus">상태: 연결 대기 중</div>
         <div id="bluetooth-control-buttons" class="button-group" style="margin-top: 1.5rem;"></div>
       </div>
 
       <div class="control-group">
         <h3>3. 인식 설정</h3>
-        <div id="object-select-container" class="model-selection"></div>
-        <div id="selected-objects-list" class="selected-tags"></div>
+        <p>인식할 AprilTag(tag36h11) 범위와 최소 인식 크기를 설정해주세요.</p>
+        <div id="tag-mode-buttons" class="button-group"></div>
+        <div id="tag-id-input-container" class="button-group" style="margin-top: 12px;"></div>
+        <div id="selected-tags-list" class="selected-tags"></div>
+        <div id="min-size-container" style="margin-top: 20px;"></div>
       </div>
 
       <div class="control-group">
-        <h3>4. 사물 인식 제어</h3>
+        <h3>4. 태그 인식 제어</h3>
+        <p>시작 버튼을 눌러 AprilTag 인식을 시작하세요.</p>
         <div id="object-control-buttons" class="button-group"></div>
       </div>
+
     </section>
   </main>
 
@@ -83,12 +86,29 @@
             <p class="copyright">© 2024 Boundary X Co. All rights reserved.</p>
           </address>
         </div>
+
         <div class="footer-links">
           <div class="link-column">
             <h4>제품 소개</h4>
             <ul>
-              <li><a href="https://boundaryx.io/shop/?idx=25" target="_blank">AI 비트런</a><span class="link-desc">마이크로비트 기반 이족보행로봇</span></li>
-              <li><a href="https://boundaryx.io/shop/?idx=26" target="_blank">AI 포니봇</a><span class="link-desc">마이크로비트 기반 모빌리티로봇</span></li>
+              <li>
+                <a href="https://boundaryx.io/shop/?idx=25" target="_blank">AI 비트런</a>
+                <span class="link-desc">마이크로비트 기반 이족보행로봇</span>
+              </li>
+              <li>
+                <a href="https://boundaryx.io/shop/?idx=26" target="_blank">AI 포니봇</a>
+                <span class="link-desc">마이크로비트 기반 모빌리티로봇</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="link-column">
+            <h4>고객 지원</h4>
+            <ul>
+              <li>
+                <a href="https://boundaryx.io/contact" target="_blank">문의처</a>
+                <span class="link-desc">제품 문의 | 제휴 문의 | 연수 문의</span>
+              </li>
             </ul>
           </div>
         </div>
@@ -96,6 +116,8 @@
     </div>
   </footer>
 
-  <script src="app.js"></script>
+  <!-- Comlink는 메인 스레드에서도 필요합니다 (Worker와의 통신을 감싸는 래퍼) -->
+  <script src="libs/comlink.min.js"></script>
+  <script type="module" src="sketch.js"></script>
 </body>
 </html>
