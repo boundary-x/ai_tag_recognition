@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>바운더리엑스 AprilTag 인식 (모바일 최적화)</title>
+  <title>바운더리엑스 AprilTag 인식</title>
   
   <link rel="icon" href="https://raw.githubusercontent.com/boundary-x/ai_teachable_machine/refs/heads/main/Favicon.png"/> 
-  
-  <!-- AprilTag WASM 경량 라이브러리 -->
+
   <script src="https://cdn.jsdelivr.net/npm/@arenaxr/apriltag-js-standalone@latest/dist/apriltag.min.js"></script>
   
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
@@ -26,7 +25,6 @@
   </header>
 
   <main>
-    <!-- [모바일 최적화] 캔버스와 비디오를 겹쳐서 배치 -->
     <div id="video-container" class="canvas-container" style="position: relative; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center;">
       <video id="webcam" autoplay playsinline muted style="position: absolute; width: 100%; height: 100%; object-fit: contain;"></video>
       <canvas id="overlayCanvas" style="position: absolute; width: 100%; height: 100%; object-fit: contain; pointer-events: none;"></canvas>
@@ -113,7 +111,6 @@
     </div>
   </footer>
 
-  <!-- Vanilla JS 로직 연결 -->
   <script src="app.js"></script>
 </body>
 </html>
