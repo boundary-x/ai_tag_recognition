@@ -1,20 +1,6 @@
 /**
  * apriltag_worker.js
  * Boundary X - AprilTag Detection Worker
- *
- * Runs the AprilTag WASM detector (tag36h11 family) entirely inside a
- * Web Worker, off the main thread. This is the key to avoiding frame
- * drops on phones/tablets: camera capture and p5.js rendering on the
- * main thread never wait on tag detection.
- *
- * Grayscale conversion also happens in here (not on the main thread),
- * and the raw camera frame is received as a Transferable ArrayBuffer
- * (zero-copy) instead of being structure-cloned, to minimize overhead
- * on low-power mobile CPUs.
- *
- * Detector core: apriltag-js-standalone (BSD-3-Clause, CONIX Research Center)
- * https://github.com/arenaxr/apriltag-js-standalone
- * Underlying C library: AprilRobotics/apriltag (BSD-2-Clause, Univ. of Michigan)
  */
 
 importScripts('apriltag_wasm.js');
