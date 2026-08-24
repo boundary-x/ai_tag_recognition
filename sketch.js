@@ -1,6 +1,6 @@
 /*
  * app.js
- * Mobile Optimized AprilTag Detection (Vanilla JS)
+ * Mobile Optimized AprilTag Detection (Vanilla JS) - Fixed Initialization
  * Features: Zero-dependency rendering, requestVideoFrameCallback, precise alignment
  */
 
@@ -21,7 +21,7 @@ const SEND_INTERVAL = 100;
 
 let selectedObjects = []; 
 let isObjectDetectionActive = false; 
-let facingMode = "environment"; // 모바일 환경을 고려해 후면 카메라를 기본으로 설정
+let facingMode = "environment"; 
 let isFlipped = false;    
 
 // DOM Elements
@@ -44,11 +44,12 @@ async function init() {
   createUI();
   
   try {
-    const AprilTag = await window.AprilTag;
-    detector = new AprilTag.Detector('tag36h11'); // tag36h11 패밀리 지정
-    isModelLoaded = true;
-    document.getElementById('btnStart').innerText = "태그 인식 시작";
-    console.log("AprilTag Model Loaded!");
+    // [수정됨] 라이브러리 공식 문서에 따른 정확한 콜백 초기화 방식
+    detector = window.Apriltag(() => {
+      isModelLoaded = true;
+      document.getElementById('btnStart').innerText = "태그 인식 시작";
+      console.log("AprilTag Model Loaded!");
+    });
   } catch (err) {
     console.error("Failed to load AprilTag:", err);
   }
@@ -71,14 +72,12 @@ async function setupCamera() {
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
     video.srcObject = stream;
     
-    // 비디오 메타데이터가 로드되면 캔버스 내부 해상도를 비디오 원본 해상도와 일치시킴 (좌표 정렬 최적화)
     video.onloadedmetadata = () => {
       videoWidth = video.videoWidth;
       videoHeight = video.videoHeight;
       canvas.width = videoWidth;
       canvas.height = videoHeight;
       
-      // 거울 모드 CSS 처리
       isFlipped = (facingMode === "user");
       video.style.transform = isFlipped ? "scaleX(-1)" : "scaleX(1)";
       canvas.style.transform = isFlipped ? "scaleX(-1)" : "scaleX(1)";
@@ -99,36 +98,43 @@ function switchCamera() {
 function detectLoop() {
   if (!isObjectDetectionActive || !isModelLoaded || videoWidth === 0) return;
 
-  // 비디오 프레임을 캔버스에 그리기 (픽셀 데이터 추출용)
   ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
   const imgData = ctx.getImageData(0, 0, videoWidth, videoHeight);
   const data = imgData.data;
 
-  // Grayscale 변환 (RGB -> Luminance 단일 채널)
+  // Grayscale 변환
   for (let i = 0, j = 0; i < data.length; i += 4, j++) {
     grayBuffer[j] = (data[i] * 77 + data[i + 1] * 150 + data[i + 2] * 29) >> 8;
   }
 
-  // AprilTag 디코딩
   const detections = detector.detect(grayBuffer, videoWidth, videoHeight);
-  
-  // 캔버스 초기화 후 바운딩 박스 렌더링
   ctx.clearRect(0, 0, videoWidth, videoHeight);
 
-  let highestMarginTag = null;
+  let largestTag = null;
+  let maxArea = 0;
   let detectedCount = 0; 
 
-  // 선택된 태그 중 가장 마진(선명도)이 높은 대장 태그 찾기
+  // [수정됨] 화면에서 가장 넓은 면적(Area)을 차지하는 태그를 대장(Target)으로 선정
   detections.forEach(tag => {
     if (selectedObjects.includes(tag.id.toString())) {
       detectedCount++;
-      if (!highestMarginTag || tag.decision_margin > highestMarginTag.decision_margin) {
-        highestMarginTag = tag;
+      
+      const corners = tag.corners;
+      const minX = Math.min(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
+      const maxX = Math.max(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
+      const minY = Math.min(corners[0].y, corners[1].y, corners[2].y, corners[3].y);
+      const maxY = Math.max(corners[0].y, corners[1].y, corners[2].y, corners[3].y);
+      
+      const area = (maxX - minX) * (maxY - minY);
+      
+      if (!largestTag || area > maxArea) {
+        largestTag = tag;
+        maxArea = area;
       }
     }
   });
 
-  // 태그 박스 그리기
+  // 박스 렌더링
   detections.forEach(tag => {
     if (!selectedObjects.includes(tag.id.toString())) return;
 
@@ -141,8 +147,7 @@ function detectLoop() {
     ctx.lineTo(p3.x, p3.y);
     ctx.closePath();
 
-    if (tag === highestMarginTag) {
-      // 대장 태그 - 파란색 표시
+    if (tag === largestTag) {
       ctx.strokeStyle = '#0064FF';
       ctx.lineWidth = 4;
       ctx.stroke();
@@ -155,7 +160,6 @@ function detectLoop() {
       ctx.textBaseline = 'middle';
       ctx.fillText(`ID: ${tag.id}`, tag.center.x, tag.center.y - 2);
     } else {
-      // 일반 태그 - 초록색 표시
       ctx.strokeStyle = '#00FF00';
       ctx.lineWidth = 2;
       ctx.stroke();
@@ -167,11 +171,11 @@ function detectLoop() {
     }
   });
 
-  // 블루투스 데이터 전송 로직
+  // 블루투스 데이터 전송
   let currentTime = performance.now();
   if (currentTime - lastSentTime > SEND_INTERVAL) {
-    if (highestMarginTag) {
-      const corners = highestMarginTag.corners;
+    if (largestTag) {
+      const corners = largestTag.corners;
       let minX = Math.min(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
       let maxX = Math.max(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
       let minY = Math.min(corners[0].y, corners[1].y, corners[2].y, corners[3].y);
@@ -179,10 +183,9 @@ function detectLoop() {
       
       let finalW = maxX - minX;
       let finalH = maxY - minY;
-      let centerX = highestMarginTag.center.x;
-      let centerY = highestMarginTag.center.y;
+      let centerX = largestTag.center.x;
+      let centerY = largestTag.center.y;
 
-      // 전면 카메라(거울 모드)일 경우 마이크로비트로 전송하는 X 좌표 반전 보정
       let sendX = isFlipped ? (videoWidth - centerX) : centerX;
 
       sendBluetoothData(sendX, centerY, finalW, finalH, detectedCount);
@@ -196,7 +199,7 @@ function detectLoop() {
     lastSentTime = currentTime;
   }
 
-  // 모바일 발열/부하 제어 핵심: 새 프레임이 준비된 순간에만 루프 재호출
+  // 모바일 성능 핵심 최적화
   if (isObjectDetectionActive) {
     if ('requestVideoFrameCallback' in video) {
       video.requestVideoFrameCallback(detectLoop);
@@ -208,14 +211,12 @@ function detectLoop() {
 
 // --- UI Controls ---
 function createUI() {
-  // 1. 카메라 제어
   const btnCam = document.createElement('button');
   btnCam.innerText = "전후방 전환";
   btnCam.className = "start-button";
   btnCam.onclick = switchCamera;
   document.getElementById('camera-control-buttons').appendChild(btnCam);
 
-  // 2. 블루투스 제어
   const btnConn = document.createElement('button');
   btnConn.innerText = "기기 연결";
   btnConn.className = "start-button";
@@ -230,7 +231,6 @@ function createUI() {
   btnsBT.appendChild(btnConn);
   btnsBT.appendChild(btnDisconn);
 
-  // 3. AprilTag ID 선택 셀렉터 생성
   const selectObj = document.createElement('select');
   selectObj.innerHTML = `<option value="">추적할 Tag ID 선택</option>`;
   for(let i=0; i<=30; i++) {
@@ -246,7 +246,6 @@ function createUI() {
   };
   document.getElementById('object-select-container').appendChild(selectObj);
 
-  // 4. 인식 시작/중지
   const btnStart = document.createElement('button');
   btnStart.id = "btnStart";
   btnStart.innerText = "모델 로딩 중...";
@@ -256,9 +255,8 @@ function createUI() {
     if (!isConnected) return alert("블루투스 연결이 필요합니다.");
     if (selectedObjects.length === 0) return alert("태그 ID를 선택해주세요.");
     isObjectDetectionActive = true;
-    ctx.clearRect(0, 0, canvas.width, canvas.height); // 시작 시 잔상 제거
+    ctx.clearRect(0, 0, canvas.width, canvas.height); 
     
-    // 루프 시작
     if ('requestVideoFrameCallback' in video) {
       video.requestVideoFrameCallback(detectLoop);
     } else {
@@ -348,5 +346,4 @@ async function sendBluetoothData(x, y, width, height, detectedCount) {
   }
 }
 
-// 초기화 시작
 window.addEventListener('DOMContentLoaded', init);
