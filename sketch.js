@@ -1,26 +1,7 @@
 /*
  * sketch.js
  * Boundary X AprilTag Detection (Powered by AprilTag WASM, tag36h11)
- * Features: Auto-Mirroring, Safety Stop, Worker-based detection (no main-thread frame drops)
- *
- * -----------------------------------------------------------------------
- * 성능 설계 요약 (모바일/태블릿 프레임 드롭 방지)
- * -----------------------------------------------------------------------
- * 1) 태그 인식(AprilTag WASM)은 전용 Web Worker(libs/apriltag_worker.js)에서
- *    실행됩니다. p5.js draw() 루프(화면 렌더링)는 절대 인식 연산을 기다리지 않습니다.
- * 2) 인식용 프레임은 화면 표시용(400x300)과 분리된 저해상도 캔버스
- *    (DETECT_WIDTH x DETECT_HEIGHT)에서 추출합니다. 카메라 자체도
- *    getUserMedia 단계에서 과도한 해상도를 요청하지 않도록 제한합니다.
- * 3) 인식 루프는 requestAnimationFrame이 아니라, 이전 인식이 끝난 뒤에만
- *    다음 인식을 예약하는 자기-조절(self-throttling) 방식입니다. 느린 기기에서
- *    자동으로 인식 주기가 늘어날 뿐, 큐가 쌓이거나 화면이 밀리지 않습니다.
- * 4) 카메라 프레임은 구조화 복제(copy) 대신 Transferable ArrayBuffer로
- *    Worker에 전달되어 메인 스레드 오버헤드를 최소화합니다.
- * 5) 3D pose 추정(return_pose)과 edge refine은 꺼져 있습니다. 이 프로토콜은
- *    2D 중심좌표/박스 크기만 필요하므로, 안 쓰는 연산을 꺼서 속도를 확보합니다.
- * 6) Worker 내부에서 인식이 계속 느리면 quad_decimate를 자동으로 높여
- *    (최대 인식 가능 거리와 맞바꿔) 프레임 속도를 회복합니다.
- * -----------------------------------------------------------------------
+ * Features: Auto-Mirroring, Safety Stop, Worker-based detection
  */
 
 // --- Bluetooth UUIDs (Microbit UART) ---
