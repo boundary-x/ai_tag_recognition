@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>바운더리엑스 AprilTag 인식</title>
+  <title>바운더리엑스 AprilTag 인식 (모바일 최적화)</title>
   
   <link rel="icon" href="https://raw.githubusercontent.com/boundary-x/ai_teachable_machine/refs/heads/main/Favicon.png"/> 
-
-  <script src="https://cdn.jsdelivr.net/npm/@arenaxr/apriltag-js-standalone@latest/dist/apriltag.min.js"></script>
+  
+  <!-- p5.js 및 기존 외부 라이브러리 스크립트 모두 제거됨 -->
   
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
   <link rel="stylesheet" type="text/css" href="style.css">
@@ -35,7 +35,7 @@
         <h3>🖥️ 전송 데이터 확인</h3>
         <div class="data-info-box">
           <p class="info-title">📢 <strong>전송 데이터 안내</strong></p>
-          <p class="info-desc">인식된 AprilTag 중 <strong>선택한 ID의 태그 1개</strong>의 기준 데이터가 전송됩니다.</p>
+          <p class="info-desc">인식된 AprilTag 중 <strong>화면에서 가장 크게 보이는 태그 1개</strong>의 기준 데이터가 전송됩니다.</p>
           <div class="info-tags">
             <span><strong>x, y</strong> : 중심 좌표</span>
             <span><strong>w</strong> : 너비</span>
@@ -96,7 +96,6 @@
               </li>
             </ul>
           </div>
-
           <div class="link-column">
             <h4>고객 지원</h4>
             <ul>
@@ -111,6 +110,7 @@
     </div>
   </footer>
 
-  <script src="sketch.js"></script>
+  <!-- [중요] 최신 ES Module 방식으로 app.js 실행 -->
+  <script type="module" src="sketch.js"></script>
 </body>
 </html>
