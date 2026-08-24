@@ -1,10 +1,7 @@
 /*
  * app.js
- * Mobile Optimized AprilTag Detection (Vanilla JS & ES Module)
+ * Mobile Optimized ArUco Marker Detection (Pure JS)
  */
-
-// 1. ES 모듈 방식을 통해 AprilTag 라이브러리를 안전하게 임포트
-import * as AprilTagLib from 'https://esm.sh/@arenaxr/apriltag-js-standalone@1.0.2';
 
 // --- Bluetooth UUIDs ---
 const UART_SERVICE_UUID = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
@@ -23,7 +20,7 @@ const SEND_INTERVAL = 100;
 
 let selectedObjects = []; 
 let isObjectDetectionActive = false; 
-let facingMode = "environment"; // 모바일 환경 기준 후방 카메라 우선
+let facingMode = "environment"; 
 let isFlipped = false;    
 
 // DOM Elements
@@ -34,10 +31,8 @@ const dataDisplay = document.getElementById('dataDisplay');
 const bluetoothStatusEl = document.getElementById('bluetoothStatus');
 const selectedObjectsListDiv = document.getElementById('selected-objects-list');
 
-// AprilTag Variables
+// ArUco Variables
 let detector;
-let grayBuffer;
-let isModelLoaded = false;
 let videoWidth = 0;
 let videoHeight = 0;
 
@@ -45,30 +40,12 @@ let videoHeight = 0;
 async function init() {
   createUI();
   
-  try {
-    // 모듈이 어떤 형태로 Export 되더라도 안전하게 클래스를 찾는 방어적 로직
-    const BaseModule = AprilTagLib.default || AprilTagLib.AprilTag || AprilTagLib;
-    
-    if (typeof BaseModule === 'function') {
-        const instance = BaseModule();
-        if (instance instanceof Promise) {
-            const Module = await instance; 
-            detector = new Module.Detector();
-        } else {
-            detector = new BaseModule.Detector();
-        }
-    } else if (BaseModule.Detector) {
-        detector = new BaseModule.Detector();
-    } else {
-        throw new Error("라이브러리 내부에서 Detector 모듈을 찾을 수 없습니다.");
-    }
-    
-    isModelLoaded = true;
-    document.getElementById('btnStart').innerText = "태그 인식 시작";
-    console.log("AprilTag Model Loaded successfully!");
-  } catch (err) {
-    console.error("AprilTag Load Error:", err);
-    alert("모델 로드 에러: " + err.message + "\n인터넷 연결 상태를 확인해주세요.");
+  // ArUco Detector 초기화 (로딩 지연 없음)
+  if (typeof AR !== "undefined") {
+    detector = new AR.Detector();
+    console.log("ArUco Detector Load Complete!");
+  } else {
+    alert("ArUco 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.");
   }
 
   await setupCamera();
@@ -98,8 +75,6 @@ async function setupCamera() {
       isFlipped = (facingMode === "user");
       video.style.transform = isFlipped ? "scaleX(-1)" : "scaleX(1)";
       canvas.style.transform = isFlipped ? "scaleX(-1)" : "scaleX(1)";
-      
-      grayBuffer = new Uint8Array(videoWidth * videoHeight);
     };
   } catch (err) {
     console.error("Camera error:", err);
@@ -113,84 +88,88 @@ function switchCamera() {
 
 // --- Detection Loop ---
 function detectLoop() {
-  if (!isObjectDetectionActive || !isModelLoaded || videoWidth === 0) return;
+  if (!isObjectDetectionActive || !detector || videoWidth === 0) return;
 
+  // 비디오 프레임 추출
   ctx.drawImage(video, 0, 0, videoWidth, videoHeight);
   const imgData = ctx.getImageData(0, 0, videoWidth, videoHeight);
-  const data = imgData.data;
-
-  // Grayscale 단일 채널 변환
-  for (let i = 0, j = 0; i < data.length; i += 4, j++) {
-    grayBuffer[j] = (data[i] * 77 + data[i + 1] * 150 + data[i + 2] * 29) >> 8;
-  }
-
-  // 디코딩
-  const detections = detector.detect(grayBuffer, videoWidth, videoHeight);
+  
+  // 캔버스 초기화
   ctx.clearRect(0, 0, videoWidth, videoHeight);
 
-  let largestTag = null;
+  // ArUco 마커 탐지
+  const markers = detector.detect(imgData);
+
+  let largestMarker = null;
   let maxArea = 0;
   let detectedCount = 0; 
 
-  // 인식된 태그 중 화면에서 가장 넓은 면적을 차지하는 대장(Target) 찾기
-  detections.forEach(tag => {
-    if (selectedObjects.includes(tag.id.toString())) {
+  // 인식된 마커 중 타겟 찾기
+  markers.forEach(marker => {
+    if (selectedObjects.includes(marker.id.toString())) {
       detectedCount++;
-      const corners = tag.corners;
+      
+      const corners = marker.corners;
       const minX = Math.min(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
       const maxX = Math.max(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
       const minY = Math.min(corners[0].y, corners[1].y, corners[2].y, corners[3].y);
       const maxY = Math.max(corners[0].y, corners[1].y, corners[2].y, corners[3].y);
       
       const area = (maxX - minX) * (maxY - minY);
-      if (!largestTag || area > maxArea) {
-        largestTag = tag;
+      if (!largestMarker || area > maxArea) {
+        largestMarker = marker;
         maxArea = area;
       }
     }
   });
 
-  // 캔버스에 바운딩 박스 그리기
-  detections.forEach(tag => {
-    if (!selectedObjects.includes(tag.id.toString())) return;
+  // 박스 렌더링
+  markers.forEach(marker => {
+    if (!selectedObjects.includes(marker.id.toString())) return;
 
-    const [p0, p1, p2, p3] = tag.corners;
+    const corners = marker.corners;
+    
+    // 중심점 계산
+    let cx = 0, cy = 0;
+    corners.forEach(p => { cx += p.x; cy += p.y; });
+    cx /= 4; cy /= 4;
+
     ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.lineTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
-    ctx.lineTo(p3.x, p3.y);
+    ctx.moveTo(corners[0].x, corners[0].y);
+    for (let i = 1; i < corners.length; i++) {
+      ctx.lineTo(corners[i].x, corners[i].y);
+    }
     ctx.closePath();
 
-    if (tag === largestTag) {
-      ctx.strokeStyle = '#0064FF'; // 메인 타겟: 파란색
+    if (marker === largestMarker) {
+      ctx.strokeStyle = '#0064FF';
       ctx.lineWidth = 4;
       ctx.stroke();
       
       ctx.fillStyle = '#0064FF';
-      ctx.fillRect(tag.center.x - 30, tag.center.y - 15, 60, 25);
+      ctx.fillRect(cx - 30, cy - 15, 60, 25);
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 16px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`ID: ${tag.id}`, tag.center.x, tag.center.y - 2);
+      ctx.fillText(`ID: ${marker.id}`, cx, cy - 2);
     } else {
-      ctx.strokeStyle = '#00FF00'; // 서브 타겟: 초록색
+      ctx.strokeStyle = '#00FF00';
       ctx.lineWidth = 2;
       ctx.stroke();
       
       ctx.fillStyle = '#00FF00';
       ctx.font = '14px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`ID: ${tag.id}`, tag.center.x, tag.center.y);
+      ctx.fillText(`ID: ${marker.id}`, cx, cy);
     }
   });
 
-  // 마이크로비트로 블루투스 데이터 전송
+  // 블루투스 데이터 전송
   let currentTime = performance.now();
   if (currentTime - lastSentTime > SEND_INTERVAL) {
-    if (largestTag) {
-      const corners = largestTag.corners;
+    if (largestMarker) {
+      const corners = largestMarker.corners;
       let minX = Math.min(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
       let maxX = Math.max(corners[0].x, corners[1].x, corners[2].x, corners[3].x);
       let minY = Math.min(corners[0].y, corners[1].y, corners[2].y, corners[3].y);
@@ -198,13 +177,15 @@ function detectLoop() {
       
       let finalW = maxX - minX;
       let finalH = maxY - minY;
-      let centerX = largestTag.center.x;
-      let centerY = largestTag.center.y;
+      
+      let cx = 0, cy = 0;
+      corners.forEach(p => { cx += p.x; cy += p.y; });
+      cx /= 4; cy /= 4;
 
-      let sendX = isFlipped ? (videoWidth - centerX) : centerX;
+      let sendX = isFlipped ? (videoWidth - cx) : cx;
 
-      sendBluetoothData(sendX, centerY, finalW, finalH, detectedCount);
-      dataDisplay.innerHTML = `전송됨: x${Math.round(sendX)} y${Math.round(centerY)} w${Math.round(finalW)} h${Math.round(finalH)} d${detectedCount}`;
+      sendBluetoothData(sendX, cy, finalW, finalH, detectedCount);
+      dataDisplay.innerHTML = `전송됨: x${Math.round(sendX)} y${Math.round(cy)} w${Math.round(finalW)} h${Math.round(finalH)} d${detectedCount}`;
       dataDisplay.style.color = "#0f0";
     } else {
       sendBluetoothData(0, 0, 0, 0, 0);
@@ -214,7 +195,7 @@ function detectLoop() {
     lastSentTime = currentTime;
   }
 
-  // 모바일 발열/부하 제어: 새 프레임이 준비된 순간에만 다시 실행
+  // 최적화된 프레임 콜백
   if (isObjectDetectionActive) {
     if ('requestVideoFrameCallback' in video) {
       video.requestVideoFrameCallback(detectLoop);
@@ -247,9 +228,9 @@ function createUI() {
   btnsBT.appendChild(btnDisconn);
 
   const selectObj = document.createElement('select');
-  selectObj.innerHTML = `<option value="">추적할 Tag ID 선택</option>`;
+  selectObj.innerHTML = `<option value="">추적할 마커 ID 선택</option>`;
   for(let i=0; i<=30; i++) {
-    selectObj.innerHTML += `<option value="${i}">Tag ID: ${i}</option>`;
+    selectObj.innerHTML += `<option value="${i}">ID: ${i}</option>`;
   }
   selectObj.onchange = (e) => {
     const val = e.target.value;
@@ -263,12 +244,12 @@ function createUI() {
 
   const btnStart = document.createElement('button');
   btnStart.id = "btnStart";
-  btnStart.innerText = "모델 로딩 중...";
+  btnStart.innerText = "마커 인식 시작";
   btnStart.className = "start-button";
   btnStart.onclick = () => {
-    if (!isModelLoaded) return alert("로딩 중입니다.");
+    if (!detector) return alert("로딩 중입니다.");
     if (!isConnected) return alert("블루투스 연결이 필요합니다.");
-    if (selectedObjects.length === 0) return alert("태그 ID를 선택해주세요.");
+    if (selectedObjects.length === 0) return alert("마커 ID를 선택해주세요.");
     isObjectDetectionActive = true;
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
     
@@ -361,5 +342,4 @@ async function sendBluetoothData(x, y, width, height, detectedCount) {
   }
 }
 
-// 앱 실행
 window.addEventListener('DOMContentLoaded', init);
