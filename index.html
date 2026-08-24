@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>바운더리엑스 AprilTag 인식 (모바일 최적화)</title>
+  <title>바운더리엑스 ArUco 마커 인식</title>
   
   <link rel="icon" href="https://raw.githubusercontent.com/boundary-x/ai_teachable_machine/refs/heads/main/Favicon.png"/> 
   
-  <!-- p5.js 및 기존 외부 라이브러리 스크립트 모두 제거됨 -->
+  <!-- [핵심] 에러 없는 순수 JS 기반 ArUco 라이브러리 로드 -->
+  <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco/src/cv.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/jcmellado/js-aruco/src/aruco.js"></script>
   
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css" />
   <link rel="stylesheet" type="text/css" href="style.css">
@@ -19,7 +21,7 @@
       <a href="https://boundaryx.io">
         <img src="https://raw.githubusercontent.com/boundary-x/ai_voice_recognition/refs/heads/main/boundaryx_logo.png" alt="Logo">
       </a>
-      AprilTag 인식
+      ArUco 마커 인식
     </div>
     <a href="https://boundaryx.io/59" class="back-button">돌아가기</a>
   </header>
@@ -35,7 +37,7 @@
         <h3>🖥️ 전송 데이터 확인</h3>
         <div class="data-info-box">
           <p class="info-title">📢 <strong>전송 데이터 안내</strong></p>
-          <p class="info-desc">인식된 AprilTag 중 <strong>화면에서 가장 크게 보이는 태그 1개</strong>의 기준 데이터가 전송됩니다.</p>
+          <p class="info-desc">인식된 마커 중 <strong>화면에서 가장 크게 보이는 마커 1개</strong>의 기준 데이터가 전송됩니다.</p>
           <div class="info-tags">
             <span><strong>x, y</strong> : 중심 좌표</span>
             <span><strong>w</strong> : 너비</span>
@@ -81,28 +83,12 @@
             <p class="copyright">© 2024 Boundary X Co. All rights reserved.</p>
           </address>
         </div>
-
         <div class="footer-links">
           <div class="link-column">
             <h4>제품 소개</h4>
             <ul>
-              <li>
-                <a href="https://boundaryx.io/shop/?idx=25" target="_blank">AI 비트런</a>
-                <span class="link-desc">마이크로비트 기반 이족보행로봇</span>
-              </li>
-              <li>
-                <a href="https://boundaryx.io/shop/?idx=26" target="_blank">AI 포니봇</a>
-                <span class="link-desc">마이크로비트 기반 모빌리티로봇</span>
-              </li>
-            </ul>
-          </div>
-          <div class="link-column">
-            <h4>고객 지원</h4>
-            <ul>
-              <li>
-                <a href="https://boundaryx.io/contact" target="_blank">문의처</a>
-                <span class="link-desc">제품 문의 | 제휴 문의 | 연수 문의</span>
-              </li>
+              <li><a href="https://boundaryx.io/shop/?idx=25" target="_blank">AI 비트런</a><span class="link-desc">마이크로비트 기반 이족보행로봇</span></li>
+              <li><a href="https://boundaryx.io/shop/?idx=26" target="_blank">AI 포니봇</a><span class="link-desc">마이크로비트 기반 모빌리티로봇</span></li>
             </ul>
           </div>
         </div>
@@ -110,7 +96,6 @@
     </div>
   </footer>
 
-  <!-- [중요] 최신 ES Module 방식으로 app.js 실행 -->
-  <script type="module" src="sketch.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
