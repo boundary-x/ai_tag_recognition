@@ -537,3 +537,34 @@ address {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Two-mode layout */
+[hidden] { display: none !important; }
+.toggle-button { background: white; color: #111; border: 1px solid #ccc; }
+.toggle-button.active { background: #111; color: white; }
+#mode-help { margin-top: 16px; }
+#id-error { color: #b3261e; }
+.title, .back-button { white-space: nowrap; }
+.title { min-width: 0; }
+.back-button { flex-shrink: 0; }
+.controls { min-width: 0; }
+.canvas-container { position: sticky; top: var(--camera-top, 80px); z-index: 90; }
+#preview { aspect-ratio: 4 / 3; }
+@media (min-width: 768px) {
+ main { gap: 2rem; }
+ .canvas-container { width: 42%; max-width: 400px; }
+}
+@media (max-width: 767px) {
+ main { padding: 1rem; gap: 1rem; }
+ header { padding: 12px; gap: 8px; }
+ .title { font-size: 14px; gap: 6px; }
+ .title img { height: 18px; }
+ .back-button { font-size: 12px; padding: 6px 10px; }
+ .control-group { padding: 20px; }
+ .canvas-container { width: 100%; min-width: 0; }
+}
+@media (max-width: 900px) and (orientation: landscape) {
+ .canvas-container { width: 42%; min-width: 0; max-height: none; }
+ .controls { width: 0; }
+ button { min-width: 0; }
+}
