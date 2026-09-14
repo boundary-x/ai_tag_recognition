@@ -67,18 +67,22 @@ Each ASCII message ends with an actual newline, represented below as \n.
 | Mode | Detection example | No detection / stopped |
 | --- | --- | --- |
 | Classification | ID12\n | none\n |
-| Recognition | x200y150w80h60d2\n | stop\n |
+| Recognition | I012X200Y150W080H060D02\n | stop\n |
 
 | Field | Description |
 | --- | --- |
-| ID | Classification marker ID, 0–586 |
-| x, y | Target center in displayed orientation, using 400 × 300 coordinates |
-| w, h | Axis-aligned bounding-box dimensions in the same coordinate space |
-| d | Number of eligible detections matching the selected ID |
+| ID / I | Classification marker ID / three-digit recognition ID, 0–586 |
+| X, Y | Target center in displayed orientation, using 400 × 300 coordinates |
+| W, H | Axis-aligned bounding-box dimensions in the same coordinate space |
+| D | Number of eligible detections matching the selected ID |
 
-The detector returns at most eight detections **before** ID and size filtering. Recognition-mode packets do not include the selected ID.
+The detector returns at most eight detections **before** ID and size filtering. Recognition-mode packets include the selected ID in the I field. I, X, Y, W and H each contain exactly three digits; D contains two digits. Values are rounded, zero-padded and clamped to 000–999 (D: 00–99).
 
 Messages are scheduled approximately every 100 ms; actual throughput depends on Bluetooth. “Sent” means the browser write completed, not that the device acknowledged or acted on it. Mode changes clear pending results and request the new mode's no-detection message; an in-flight write cannot be recalled.
+
+**Fixed positions (zero-based):** I value at 1–3, X at 5–7, Y at 9–11, W at 13–15, H at 17–19, D at 21–22. A detection packet is 23 ASCII characters plus one newline (24 bytes).
+
+Writes are split into chunks of at most 20 bytes, serialized without interleaving messages. The receiver must accumulate chunks until the newline before parsing. Classification messages and the none/stop signals retain their existing format. Existing receivers expecting lowercase variable-width fields must be updated.
 
 **Nordic UART UUIDs:**
 

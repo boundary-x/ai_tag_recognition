@@ -1,4 +1,4 @@
-import {ROI, validId, crop4by3, evaluate} from './tag-logic.js';
+import {ROI, validId, crop4by3, evaluate, writePacket} from './tag-logic.js';
 const $ = id => document.getElementById(id);
 const canvas=$('preview'), ctx=canvas.getContext('2d'), video=$('camera');
 const capture=document.createElement('canvas');
@@ -26,7 +26,7 @@ function updateMode(){
     : '화면 전체에서 선택한 ID만 인식합니다. 현재 감지기는 품질 점수를 제공하지 않아 같은 ID 중 가장 큰 태그를 선택합니다.';
   $('protocol-help').textContent=mode==='classification'
     ? '태그 ID 전송: ID12 · 미검출: none · 각 데이터 뒤에 줄바꿈이 붙습니다.'
-    : 'x, y: 중심 좌표 · w, h: 크기 · d: 선택한 ID의 검출 개수(최대 8개 결과 내). 좌표 기준 400×300 · 미검출: stop';
+    : 'I: ID · X, Y: 중심 좌표 · W, H: 크기(각 3자리) · D: 검출 개수(2자리). 예: I012X200Y150W080H060D02 · 좌표 기준 400×300 · 미검출: stop';
 }
 for(const id of ['classification','tracking']) $(id).onclick=()=>{
   if(mode===id)return;
@@ -163,7 +163,7 @@ async function flush(){
     while((neutralPending||pending)&&characteristic){
       const job=neutralPending||pending, ch=characteristic, generation=linkGeneration;
       if(neutralPending)neutralPending=null;else pending=null;
-      await ch.writeValue(new TextEncoder().encode(job.packet));
+      await writePacket(ch, job.packet);
       if(generation===linkGeneration&&job.epoch===epoch)$('dataDisplay').textContent='전송됨: '+job.packet.trim();
     }
   }catch(e){pending=null;neutralPending=null;$('dataDisplay').textContent='전송 실패: '+e.message;}

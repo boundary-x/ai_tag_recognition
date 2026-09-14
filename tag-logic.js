@@ -1,4 +1,18 @@
 export const ROI = { x: 50, y: 0, size: 300 };
+function digits(value, width) {
+  const integer = Number.isFinite(value) ? Math.round(value) : 0;
+  return String(Math.max(0, Math.min(10 ** width - 1, integer))).padStart(width, '0');
+}
+export function trackingPacket(tag, count) {
+  return `I${digits(tag.id,3)}X${digits(tag.center.x,3)}Y${digits(tag.center.y,3)}W${digits(tag.w,3)}H${digits(tag.h,3)}D${digits(count,2)}`;
+}
+export async function writePacket(characteristic, packet) {
+  const bytes = new TextEncoder().encode(packet);
+  // Keep the newline-delimited message intact across legacy 20-byte UART writes.
+  for (let offset = 0; offset < bytes.length; offset += 20) {
+    await characteristic.writeValue(bytes.slice(offset, offset + 20));
+  }
+}
 export function validId(value) {
   return String(value).trim() !== '' && Number.isInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 586;
 }
@@ -21,6 +35,6 @@ export function evaluate(detections, mode, id, minimum, mirrored) {
     : (a,b) => b.w*b.h-a.w*a.h || a.center.x-b.center.x);
   const primary = tags[0];
   const packet = !primary ? (mode === 'classification' ? 'none' : 'stop') : mode === 'classification'
-    ? `ID${primary.id}` : `x${Math.round(primary.center.x)}y${Math.round(primary.center.y)}w${Math.round(primary.w)}h${Math.round(primary.h)}d${tags.length}`;
+    ? `ID${primary.id}` : trackingPacket(primary, tags.length);
   return {tags, primary, packet: packet + '\n'};
 }
