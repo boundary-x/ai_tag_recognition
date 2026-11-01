@@ -129,7 +129,7 @@ function draw(){
     if(performance.now()-lastSend>=100){
       lastSend=performance.now();
       if(characteristic)enqueue(result.packet);
-      else $('dataDisplay').textContent='기기 미연결 · 전송 예정: '+result.packet.trim();
+      else $('dataDisplay').textContent='전송할 데이터: '+result.packet.trim();
     }
   }
   requestAnimationFrame(draw);
@@ -173,3 +173,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)stop();});
 window.addEventListener('pagehide',()=>{stop();video.srcObject?.getTracks().forEach(t=>t.stop());});
 new ResizeObserver(()=>document.documentElement.style.setProperty('--camera-top',document.querySelector('header').getBoundingClientRect().height+8+'px')).observe(document.querySelector('header'));
 updateMode();startCamera();init();draw();
+
+
