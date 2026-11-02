@@ -88,3 +88,6 @@ body.guide-active::after { content:''; height:60vh; flex-shrink:0; }
 #support-card .device-example-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 #support-card .device-example-links a{padding:15px;border-radius:10px;background:#111;color:white;font-weight:700;text-decoration:none}
 @media(max-width:600px){#support-card .device-example-links{grid-template-columns:1fr}}
+
+/* Keep explanatory text visually separate from example actions. */
+#support-card .device-example-card .device-example-links + p { margin-top: 20px; }
