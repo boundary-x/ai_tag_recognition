@@ -144,11 +144,11 @@ async function connect(){
   try{
     if(!navigator.bluetooth)throw Error('이 브라우저는 블루투스를 지원하지 않습니다.');
     $('bluetoothStatus').textContent='상태: 연결 중...';
-    device=await navigator.bluetooth.requestDevice({filters:[{namePrefix:'BBC micro:bit'}],optionalServices:['6e400001-b5a3-f393-e0a9-e50e24dcca9e']});
+    device=await BoardLink.requestDevice({filters:[{namePrefix:'BBC micro:bit'}],optionalServices:['6e400001-b5a3-f393-e0a9-e50e24dcca9e']});
     device.addEventListener('gattserverdisconnected',disconnected,{once:true});
     const server=await device.gatt.connect();
     const service=await server.getPrimaryService('6e400001-b5a3-f393-e0a9-e50e24dcca9e');
-    characteristic=await service.getCharacteristic('6e400003-b5a3-f393-e0a9-e50e24dcca9e');
+    characteristic=await BoardLink.getCharacteristic(service,'6e400003-b5a3-f393-e0a9-e50e24dcca9e');
     linkGeneration++;$('bluetoothStatus').textContent='상태: 연결됨 · '+device.name;$('bluetoothStatus').className='status-connected';neutral();
   }catch(e){
     device?.gatt.disconnect();disconnected();
